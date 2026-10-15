@@ -7,15 +7,28 @@ exactement celle de l'Oric, sans réglage. Les routines qui parlent au matériel
 mini-BASIC du chargeur (modes écran, musique) sont remplacés par des fonctions Python.
 """
 import game_code
+from font6x8 import GLYPHS
 
 SCREEN, SCREEN_END = 0xA000, 0xBF40            # écran HIRES : 40 octets x 200 lignes
 TEXT, TEXT_END = 0xBF68, 0xC000                # 3 lignes de texte sous l'écran HIRES
 SENTINEL = -1                                  # adresse de retour « vers le BASIC »
 
 
+CHARSET = 0x9800        # jeu de caractères de l'écran HIRES : 8 octets par caractère, à $9800 + code x 8
+
+
+def install_charset(mem):
+    """La ROM de l'Oric recopie son jeu de caractères en RAM dès le démarrage ($9800-$9BFF en mode HIRES) ; la routine
+    d'affichage de texte du jeu [$104C] y lit la forme de chaque caractère (chiffres du choix de mission, textes des
+    écrans...). Cette zone n'est pas sur la cassette : on la remplit avec notre police 6x8 (font6x8.py)."""
+    for code, rows in GLYPHS.items():
+        mem[CHARSET + code * 8:CHARSET + code * 8 + 8] = bytes(rows)
+    return mem
+
+
 class Machine:
     def __init__(self, image, seed=1):
-        self.m = bytearray(image)              # mémoire (copie)
+        self.m = install_charset(bytearray(image))     # mémoire (copie) + jeu de caractères
         self.a = self.x = self.y = 0
         self.C = self.Z = self.N = self.V = 0
         self.stack = []                        # pile des adresses de retour (JSR/RTS)
